@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Artist {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String   @db.VarChar(100)
+  slug             String   @unique @db.VarChar(120)
+  bio              String?  @db.Text
+  website          String?  @db.VarChar(255)
+  socialInstagram  String?  @map("social_instagram") @db.VarChar(255)
+  socialSoundcloud String?  @map("social_soundcloud") @db.VarChar(255)
+  socialSpotify    String?  @map("social_spotify") @db.VarChar(255)
+  avatarUrl        String?  @map("avatar_url") @db.VarChar(255)
+  isLabel          Boolean  @default(false) @map("is_label")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  releases         Release[]
+  events           Event[]
+  releaseArtists   ReleaseArtist[]
+
+  @@map("artists")
+}
+
+model Release {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String   @db.VarChar(200)
+  slug          String   @unique @db.VarChar(220)
+  description   String?  @db.Text
+  coverArtUrl   String?  @map("cover_art_url") @db.VarChar(255)
+  bannerUrl     String?  @map("banner_url") @db.VarChar(255)
+  releaseDate   DateTime? @map("release_date") @db.Date
+  catalogNumber String?  @map("catalog_number") @db.VarChar(50)
+  format        String?  @db.VarChar(50)
+  type          String   @default("single") @db.VarChar(50)
+  status        String   @default("draft") @db.VarChar(20)
+  isFeatured    Boolean  @default(false) @map("is_featured")
+  artistId      String?  @map("artist_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamp(6)
+
+  artist         Artist?          @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  tracks         Track[]
+  releaseArtists ReleaseArtist[]
+  releaseTags    ReleaseTag[]
+
+  @@map("releases")
+}
+
+model Track {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String   @db.VarChar(200)
+  duration      Int?     // en segundos
+  trackNumber   Int?     @map("track_number")
+  audioUrl      String?  @map("audio_url") @db.VarChar(255)
+  soundcloudUrl String?  @map("soundcloud_url") @db.VarChar(255)
+  youtubeUrl    String?  @map("youtube_url") @db.VarChar(255)
+  spotifyUrl    String?  @map("spotify_url") @db.VarChar(255)
+  isExplicit    Boolean  @default(false) @map("is_explicit")
+  releaseId     String   @map("release_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@map("tracks")
+}
+
+model Event {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String   @db.VarChar(200)
+  slug        String   @unique @db.VarChar(220)
+  description String?  @db.Text
+  venue       String?  @db.VarChar(150)
+  city        String?  @db.VarChar(100)
+  country     String?  @db.VarChar(100)
+  address     String?  @db.Text
+  eventDate   DateTime @map("event_date") @db.Timestamp(6)
+  doorsOpen   DateTime? @map("doors_open") @db.Timestamp(6)
+  ticketUrl   String?  @map("ticket_url") @db.VarChar(255)
+  flyerUrl    String?  @map("flyer_url") @db.VarChar(255)
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  status      String   @default("upcoming") @db.VarChar(20)
+  artistId    String?  @map("artist_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  artist Artist? @relation(fields: [artistId], references: [id], onDelete: SetNull)
+
+  @@map("events")
+}
+
+model Tag {
+  id    String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name  String  @unique @db.VarChar(50)
+  slug  String  @unique @db.VarChar(60)
+  color String? @default("#000000") @db.VarChar(7)
+
+  releaseTags ReleaseTag[]
+
+  @@map("tags")
+}
+
+model ReleaseArtist {
+  releaseId String @map("release_id") @db.Uuid
+  artistId  String @map("artist_id") @db.Uuid
+  role      String @default("featured") @db.VarChar(50)
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  artist  Artist  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([releaseId, artistId])
+  @@map("release_artists")
+}
+
+model ReleaseTag {
+  releaseId String @map("release_id") @db.Uuid
+  tagId     String @map("tag_id") @db.Uuid
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([releaseId, tagId])
+  @@map("release_tags")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username     String   @unique @db.VarChar(50)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  fullName     String?  @map("full_name") @db.VarChar(100)
+  role         String   @default("editor") @db.VarChar(20)
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login") @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("users")
+}
